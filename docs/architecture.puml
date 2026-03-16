@@ -1,0 +1,400 @@
+@startuml RustySpec Architecture
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam classFontSize 11
+
+title RustySpec — Class Diagram
+
+' ============================================================
+' CLI Layer
+' ============================================================
+package "cli" <<Rectangle>> #E3F2FD {
+    class Cli {
+        +command: Commands
+        +debug: bool
+    }
+
+    enum Commands {
+        Init
+        Specify
+        Clarify
+        Plan
+        Tasks
+        Implement
+        Analyze
+        Checklist
+        Preset
+        Extension
+        Upgrade
+        Completions
+        Check
+    }
+
+    class StepTracker {
+        -steps: Vec<Step>
+        +new(): StepTracker
+        +add(label): usize
+        +set_status(idx, status)
+        +set_detail(idx, detail)
+        +print_all()
+    }
+
+    enum StepStatus {
+        Pending
+        Running
+        Done
+        Error
+        Skipped
+    }
+
+    Cli --> Commands
+    StepTracker --> StepStatus
+}
+
+' ============================================================
+' Config
+' ============================================================
+package "config" <<Rectangle>> #FFF3E0 {
+    class RootConfig {
+        +project: ProjectConfig
+        +ai: AiConfig
+        +git: GitConfig
+        +templates: TemplatesConfig
+        +new(name): RootConfig
+        +load(path): Result<RootConfig>
+        +save(path): Result<()>
+    }
+
+    class ProjectConfig {
+        +name: String
+        +version: String
+    }
+
+    class AiConfig {
+        +default_agent: String
+    }
+
+    class GitConfig {
+        +auto_branch: bool
+        +auto_commit: bool
+    }
+
+    class InitOptions {
+        +ai_assistant: String
+        +script_type: String
+        +installed_at: String
+        +save(path): Result<()>
+    }
+
+    RootConfig *-- ProjectConfig
+    RootConfig *-- AiConfig
+    RootConfig *-- GitConfig
+}
+
+' ============================================================
+' Core — Domain Logic
+' ============================================================
+package "core" <<Rectangle>> #E8F5E9 {
+    class ParsedSpec {
+        +user_stories: Vec<UserStory>
+        +requirements: Vec<Requirement>
+        +clarification_markers: Vec<ClarificationMarker>
+        +entities: Vec<String>
+        +raw: String
+    }
+
+    class UserStory {
+        +title: String
+        +priority: String
+        +acceptance_scenarios: Vec<String>
+    }
+
+    class Requirement {
+        +id: String
+        +text: String
+    }
+
+    class ClarificationMarker {
+        +text: String
+        +line_number: usize
+    }
+
+    class Constitution {
+        +raw: String
+        +gates: Vec<Gate>
+    }
+
+    class Gate {
+        +name: String
+        +article: String
+        +checks: Vec<String>
+    }
+
+    class GateResult {
+        +gate_name: String
+        +passed: bool
+        +violations: Vec<String>
+    }
+
+    class TaskList {
+        +phases: Vec<Phase>
+    }
+
+    class Phase {
+        +name: String
+        +tasks: Vec<Task>
+    }
+
+    class Task {
+        +id: String
+        +parallel: bool
+        +story: Option<String>
+        +description: String
+        +format(): String
+    }
+
+    class AnalysisReport {
+        +findings: Vec<Finding>
+        +overflow_count: usize
+        +traceability_score: f64
+    }
+
+    class Finding {
+        +severity: Severity
+        +message: String
+        +remediation: String
+    }
+
+    enum Severity {
+        Critical
+        High
+        Medium
+        Low
+    }
+
+    enum RustySpecError {
+        Config
+        Spec
+        Template
+        Git
+        Feature
+        Init
+        Validation
+    }
+
+    ParsedSpec *-- UserStory
+    ParsedSpec *-- Requirement
+    ParsedSpec *-- ClarificationMarker
+    Constitution *-- Gate
+    TaskList *-- Phase
+    Phase *-- Task
+    AnalysisReport *-- Finding
+    Finding --> Severity
+}
+
+' ============================================================
+' Agents
+' ============================================================
+package "agents" <<Rectangle>> #F3E5F5 {
+    class AgentConfig {
+        +id: &str
+        +name: &str
+        +command_dir: &str
+        +commands_subdir: &str
+        +extension: &str
+        +format: AgentFormat
+        +arg_placeholder: &str
+        +requires_cli: bool
+        +aliases: &[&str]
+    }
+
+    enum AgentFormat {
+        Markdown
+        Toml
+    }
+
+    class DetectedAgent {
+        +config: &AgentConfig
+        +dir_exists: bool
+        +cli_available: bool
+    }
+
+    class "registry" as AgentRegistry <<module>> {
+        +detect_agents(root): Vec<DetectedAgent>
+        +register_commands(root, agent): Result
+        +unregister_commands(root, agent): Result
+        +register_all(root, target): Result<Vec<String>>
+    }
+
+    class "formats" as AgentFormats <<module>> {
+        +translate_placeholder(content, target): String
+        +render_markdown(desc, body): String
+        +render_toml(desc, body): String
+        +adjust_script_paths(content): String
+        +kimi_command_name(cmd): String
+        +standard_command_name(cmd): String
+    }
+
+    AgentConfig --> AgentFormat
+    DetectedAgent --> AgentConfig
+    AgentRegistry --> AgentConfig
+    AgentRegistry --> AgentFormats
+}
+
+' ============================================================
+' Templates
+' ============================================================
+package "templates" <<Rectangle>> #FFFDE7 {
+    class "embedded" as EmbeddedTemplates <<module>> {
+        +SPEC_TEMPLATE: &str
+        +PLAN_TEMPLATE: &str
+        +TASKS_TEMPLATE: &str
+        +CHECKLIST_TEMPLATE: &str
+        +CONSTITUTION_TEMPLATE: &str
+        +AGENT_FILE_TEMPLATE: &str
+        +all(): Vec<(&str, &str)>
+    }
+
+    class ResolvedTemplate {
+        +path: Option<PathBuf>
+        +source: TemplateSource
+    }
+
+    enum TemplateSource {
+        Override
+        Preset(String)
+        Extension(String)
+        EmbeddedDefault
+    }
+
+    class "resolver" as TemplateResolver <<module>> {
+        +resolve(name, root, priorities): ResolvedTemplate
+        +load_template(name, root, priorities): Result<(String, TemplateSource)>
+    }
+
+    ResolvedTemplate --> TemplateSource
+    TemplateResolver --> ResolvedTemplate
+    TemplateResolver ..> EmbeddedTemplates : fallback
+}
+
+' ============================================================
+' Presets
+' ============================================================
+package "presets" <<Rectangle>> #FCE4EC {
+    class PresetManifest {
+        +schema_version: String
+        +preset: PresetInfo
+        +requires: PresetRequires
+        +provides: PresetProvides
+        +load(path): Result<Self>
+        +parse(content): Result<Self>
+        +validate(): Result<()>
+    }
+
+    class PresetEntry {
+        +id: String
+        +name: String
+        +version: String
+        +priority: u32
+        +description: String
+        +installed_at: String
+    }
+
+    class PresetRegistry {
+        -entries: HashMap<String, PresetEntry>
+        +load(path): Result<Self>
+        +save(path): Result<()>
+        +add(entry): Result<()>
+        +remove(id): Result<PresetEntry>
+        +get(id): Option<PresetEntry>
+        +list(): Vec<PresetEntry>
+        +sorted_priorities(): Vec<(String, u32)>
+        +search(query): Vec<PresetEntry>
+    }
+
+    PresetRegistry o-- PresetEntry
+    PresetManifest ..> PresetEntry : creates
+}
+
+' ============================================================
+' Extensions
+' ============================================================
+package "extensions" <<Rectangle>> #E0F7FA {
+    class ExtensionManifest {
+        +schema_version: String
+        +extension: ExtensionInfo
+        +requires: ExtensionRequires
+        +provides: ExtensionProvides
+        +hooks: HashMap<String, HookDef>
+        +load(path): Result<Self>
+        +validate(): Result<()>
+    }
+
+    class HookDef {
+        +command: String
+        +optional: bool
+    }
+
+    class ExtensionEntry {
+        +id: String
+        +name: String
+        +version: String
+        +installed_timestamp: String
+        +enabled: bool
+        +commands: HashMap<String, Vec<String>>
+        +hooks: Vec<HookEntry>
+        +templates: Vec<String>
+        +dev: bool
+    }
+
+    class HookEntry {
+        +trigger: String
+        +file: String
+    }
+
+    class ExtensionRegistry {
+        -entries: HashMap<String, ExtensionEntry>
+        +load(path): Result<Self>
+        +save(path): Result<()>
+        +add(entry): Result<()>
+        +remove(id): Result<ExtensionEntry>
+        +enable(id): Result<()>
+        +disable(id): Result<()>
+        +get(id): Option<ExtensionEntry>
+        +resolve(name): Result<Option<ExtensionEntry>>
+        +enabled_hooks(trigger): Vec<(String, HookEntry)>
+    }
+
+    class "hooks" as HookExecutor <<module>> {
+        +fire_hooks(trigger, root, registry)
+    }
+
+    ExtensionManifest *-- HookDef
+    ExtensionEntry *-- HookEntry
+    ExtensionRegistry o-- ExtensionEntry
+    HookExecutor --> ExtensionRegistry
+    ExtensionManifest ..> ExtensionEntry : creates
+}
+
+' ============================================================
+' Cross-package relationships
+' ============================================================
+Commands ..> RootConfig : loads
+Commands ..> ParsedSpec : parses
+Commands ..> Constitution : checks
+Commands ..> TaskList : generates
+Commands ..> AnalysisReport : produces
+Commands ..> AgentRegistry : registers
+Commands ..> TemplateResolver : resolves
+Commands ..> PresetRegistry : manages
+Commands ..> ExtensionRegistry : manages
+Commands ..> HookExecutor : fires
+
+TemplateResolver ..> PresetRegistry : reads priorities
+TemplateResolver ..> ExtensionRegistry : scans dirs
+
+@enduml
