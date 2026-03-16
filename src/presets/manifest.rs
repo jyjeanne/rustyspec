@@ -111,12 +111,13 @@ impl PresetManifest {
 
         // Version specifier
         if !self.requires.rustyspec_version.is_empty()
-            && semver::VersionReq::parse(&self.requires.rustyspec_version).is_err() {
-                bail!(
-                    "Invalid version specifier '{}'. Use semver ranges like >=0.1.0",
-                    self.requires.rustyspec_version
-                );
-            }
+            && semver::VersionReq::parse(&self.requires.rustyspec_version).is_err()
+        {
+            bail!(
+                "Invalid version specifier '{}'. Use semver ranges like >=0.1.0",
+                self.requires.rustyspec_version
+            );
+        }
 
         Ok(())
     }

@@ -26,9 +26,10 @@ pub fn next_feature_number(specs_dir: &Path) -> Result<u32> {
             let name = entry.file_name();
             let name_str = name.to_string_lossy();
             if let Some(caps) = re.captures(&name_str)
-                && let Ok(num) = caps[1].parse::<u32>() {
-                    max_num = max_num.max(num);
-                }
+                && let Ok(num) = caps[1].parse::<u32>()
+            {
+                max_num = max_num.max(num);
+            }
         }
     }
 
@@ -123,11 +124,12 @@ pub fn resolve_feature(explicit_id: Option<&str>, project_root: &Path) -> Result
 
     // Level 3: git branch
     if let Some(branch) = super::git::current_branch(project_root)
-        && is_valid_feature_branch(&branch) {
-            let prefix = &branch[..3]; // extract numeric prefix
-            log::debug!("Feature resolved via git branch: '{branch}' → prefix '{prefix}'");
-            return find_feature_dir_by_prefix(&project_root.join("specs"), prefix);
-        }
+        && is_valid_feature_branch(&branch)
+    {
+        let prefix = &branch[..3]; // extract numeric prefix
+        log::debug!("Feature resolved via git branch: '{branch}' → prefix '{prefix}'");
+        return find_feature_dir_by_prefix(&project_root.join("specs"), prefix);
+    }
 
     // Level 4: latest specs/ directory
     log::debug!("Feature resolved via latest specs/ directory (fallback)");
@@ -209,9 +211,10 @@ fn latest_feature_dir(specs_dir: &Path) -> Result<String> {
             let name = entry.file_name().to_string_lossy().to_string();
             if let Some(caps) = re.captures(&name)
                 && let Ok(num) = caps[1].parse::<u32>()
-                    && best.as_ref().is_none_or(|(n, _)| num > *n) {
-                        best = Some((num, name));
-                    }
+                && best.as_ref().is_none_or(|(n, _)| num > *n)
+            {
+                best = Some((num, name));
+            }
         }
     }
 

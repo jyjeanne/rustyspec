@@ -57,23 +57,24 @@ pub fn resolve(
     // Layer 3: extensions
     let extensions_dir = rustyspec_dir.join("extensions");
     if extensions_dir.exists()
-        && let Ok(entries) = std::fs::read_dir(&extensions_dir) {
-            for entry in entries.flatten() {
-                if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    if name.starts_with('.') {
-                        continue; // skip .registry, .cache
-                    }
-                    let ext_path = entry.path().join("templates").join(template_name);
-                    if ext_path.exists() {
-                        return ResolvedTemplate {
-                            path: Some(ext_path),
-                            source: TemplateSource::Extension(name),
-                        };
-                    }
+        && let Ok(entries) = std::fs::read_dir(&extensions_dir)
+    {
+        for entry in entries.flatten() {
+            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') {
+                    continue; // skip .registry, .cache
+                }
+                let ext_path = entry.path().join("templates").join(template_name);
+                if ext_path.exists() {
+                    return ResolvedTemplate {
+                        path: Some(ext_path),
+                        source: TemplateSource::Extension(name),
+                    };
                 }
             }
         }
+    }
 
     // Layer 4: embedded default
     ResolvedTemplate {

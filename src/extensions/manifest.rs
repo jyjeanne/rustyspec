@@ -178,12 +178,13 @@ impl ExtensionManifest {
         }
 
         if !self.requires.rustyspec_version.is_empty()
-            && semver::VersionReq::parse(&self.requires.rustyspec_version).is_err() {
-                bail!(
-                    "Invalid version specifier '{}'.",
-                    self.requires.rustyspec_version
-                );
-            }
+            && semver::VersionReq::parse(&self.requires.rustyspec_version).is_err()
+        {
+            bail!(
+                "Invalid version specifier '{}'.",
+                self.requires.rustyspec_version
+            );
+        }
 
         Ok(())
     }
