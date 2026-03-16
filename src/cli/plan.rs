@@ -100,16 +100,26 @@ pub fn run(feature_id: Option<&str>) -> Result<()> {
     std::fs::write(feature_dir.join("plan.md"), &plan_content)?;
     println!("  Created plan.md (Phase 1)");
 
-    // Data model
+    // Data model — extract entity descriptions from spec
+    let spec_content = std::fs::read_to_string(&spec_path)?;
+    let entities_with_desc =
+        crate::core::spec_parser::extract_entities_with_descriptions(&spec_content);
+
     let data_model = format!(
         "# Data Model: {}\n\n## Entities\n\n{}\n",
         feature_dir_name,
-        if spec.entities.is_empty() {
+        if entities_with_desc.is_empty() {
             "[No entities defined in spec]".to_string()
         } else {
-            spec.entities
+            entities_with_desc
                 .iter()
-                .map(|e| format!("### {e}\n\n[Attributes to be defined]\n"))
+                .map(|(name, desc)| {
+                    if desc.is_empty() {
+                        format!("### {name}\n\n[Attributes to be defined]\n")
+                    } else {
+                        format!("### {name}\n\n{desc}\n")
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join("\n")
         }

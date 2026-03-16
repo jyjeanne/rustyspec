@@ -32,6 +32,9 @@ pub fn run(name: Option<String>, here: bool, no_git: bool, _force: bool) -> Resu
     // Copy embedded templates (preserves existing)
     templates::copy_embedded_templates(&project_dir.join(".rustyspec/templates"))?;
 
+    // Copy embedded scripts (always overwrite)
+    templates::copy_embedded_scripts(&project_dir.join(".rustyspec"))?;
+
     // Generate constitution from template (preserves existing)
     generate_constitution(&project_dir, &project_name)?;
 
@@ -94,8 +97,6 @@ fn resolve_project_dir(name: Option<&str>, here: bool) -> Result<PathBuf> {
 fn create_directory_structure(project_dir: &Path) -> Result<()> {
     let dirs = [
         ".rustyspec/templates/overrides",
-        ".rustyspec/scripts/bash",
-        ".rustyspec/scripts/powershell",
         ".rustyspec/presets",
         ".rustyspec/extensions/.cache/catalogs",
         "specs",

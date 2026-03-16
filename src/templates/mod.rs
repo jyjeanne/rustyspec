@@ -30,6 +30,43 @@ pub mod embedded {
     }
 }
 
+/// Embedded shell scripts
+pub mod scripts {
+    pub const BASH_COMMON: &str = include_str!("../../scripts/bash/common.sh");
+    pub const BASH_CHECK: &str = include_str!("../../scripts/bash/check-prerequisites.sh");
+    pub const BASH_NEW_FEATURE: &str = include_str!("../../scripts/bash/create-new-feature.sh");
+    pub const BASH_SETUP_PLAN: &str = include_str!("../../scripts/bash/setup-plan.sh");
+    pub const BASH_UPDATE_AGENT: &str = include_str!("../../scripts/bash/update-agent-context.sh");
+
+    pub const PS_COMMON: &str = include_str!("../../scripts/powershell/common.ps1");
+    pub const PS_CHECK: &str = include_str!("../../scripts/powershell/check-prerequisites.ps1");
+    pub const PS_NEW_FEATURE: &str =
+        include_str!("../../scripts/powershell/create-new-feature.ps1");
+    pub const PS_SETUP_PLAN: &str = include_str!("../../scripts/powershell/setup-plan.ps1");
+    pub const PS_UPDATE_AGENT: &str =
+        include_str!("../../scripts/powershell/update-agent-context.ps1");
+
+    pub fn bash_scripts() -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("common.sh", BASH_COMMON),
+            ("check-prerequisites.sh", BASH_CHECK),
+            ("create-new-feature.sh", BASH_NEW_FEATURE),
+            ("setup-plan.sh", BASH_SETUP_PLAN),
+            ("update-agent-context.sh", BASH_UPDATE_AGENT),
+        ]
+    }
+
+    pub fn powershell_scripts() -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("common.ps1", PS_COMMON),
+            ("check-prerequisites.ps1", PS_CHECK),
+            ("create-new-feature.ps1", PS_NEW_FEATURE),
+            ("setup-plan.ps1", PS_SETUP_PLAN),
+            ("update-agent-context.ps1", PS_UPDATE_AGENT),
+        ]
+    }
+}
+
 /// Render a template string with the given variables.
 pub fn render(template_str: &str, vars: &HashMap<String, String>) -> Result<String> {
     let mut tera = Tera::default();
@@ -64,6 +101,24 @@ pub fn copy_embedded_templates(target_dir: &Path) -> Result<()> {
             std::fs::write(&path, content)?;
         }
     }
+    Ok(())
+}
+
+/// Copy all embedded scripts to `.rustyspec/scripts/`.
+/// Always overwrites (scripts are not user-customizable).
+pub fn copy_embedded_scripts(rustyspec_dir: &Path) -> Result<()> {
+    let bash_dir = rustyspec_dir.join("scripts/bash");
+    std::fs::create_dir_all(&bash_dir)?;
+    for (name, content) in scripts::bash_scripts() {
+        std::fs::write(bash_dir.join(name), content)?;
+    }
+
+    let ps_dir = rustyspec_dir.join("scripts/powershell");
+    std::fs::create_dir_all(&ps_dir)?;
+    for (name, content) in scripts::powershell_scripts() {
+        std::fs::write(ps_dir.join(name), content)?;
+    }
+
     Ok(())
 }
 
@@ -160,5 +215,58 @@ mod tests {
 
         let content = std::fs::read_to_string(target.join("spec-template.md")).unwrap();
         assert_eq!(content, custom);
+    }
+
+    #[test]
+    fn all_bash_scripts_are_nonempty() {
+        for (name, content) in scripts::bash_scripts() {
+            assert!(!content.is_empty(), "Bash script {name} is empty");
+            assert!(
+                content.starts_with("#!/"),
+                "Bash script {name} missing shebang"
+            );
+        }
+    }
+
+    #[test]
+    fn all_powershell_scripts_are_nonempty() {
+        for (name, content) in scripts::powershell_scripts() {
+            assert!(!content.is_empty(), "PowerShell script {name} is empty");
+        }
+    }
+
+    #[test]
+    fn copy_embedded_scripts_creates_files() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let rustyspec_dir = dir.path().join(".rustyspec");
+        copy_embedded_scripts(&rustyspec_dir).unwrap();
+
+        for (name, _) in scripts::bash_scripts() {
+            assert!(
+                rustyspec_dir.join("scripts/bash").join(name).exists(),
+                "Missing bash script: {name}"
+            );
+        }
+        for (name, _) in scripts::powershell_scripts() {
+            assert!(
+                rustyspec_dir.join("scripts/powershell").join(name).exists(),
+                "Missing powershell script: {name}"
+            );
+        }
+    }
+
+    #[test]
+    fn copy_embedded_scripts_overwrites_existing() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let rustyspec_dir = dir.path().join(".rustyspec");
+        std::fs::create_dir_all(rustyspec_dir.join("scripts/bash")).unwrap();
+        std::fs::write(rustyspec_dir.join("scripts/bash/common.sh"), "OLD").unwrap();
+
+        copy_embedded_scripts(&rustyspec_dir).unwrap();
+
+        let content =
+            std::fs::read_to_string(rustyspec_dir.join("scripts/bash/common.sh")).unwrap();
+        assert_ne!(content, "OLD", "Scripts should be overwritten on copy");
+        assert!(content.contains("get_repo_root"));
     }
 }

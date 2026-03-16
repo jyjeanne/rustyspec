@@ -57,10 +57,27 @@ pub fn register_commands(project_root: &Path, agent: &AgentConfig) -> Result<()>
     std::fs::create_dir_all(&cmd_dir)?;
 
     for (cmd_name, description) in COMMANDS {
-        let body = format!(
-            "Read the project context from .rustyspec/AGENT.md, then execute the '{}' workflow for the feature specified by {}.",
-            cmd_name, agent.arg_placeholder
-        );
+        let body = if *cmd_name == "implement" {
+            let arg = agent.arg_placeholder;
+            format!(
+                "Read the project context from .rustyspec/AGENT.md, then implement the feature.\n\n\
+                 The feature ID is: {arg}\n\
+                 Find the matching directory under specs/ (e.g. specs/001-feature-name/).\n\n\
+                 Steps:\n\
+                 1. Read the feature's tasks.md for the task list\n\
+                 2. Read the feature's spec.md for requirements and acceptance criteria\n\
+                 3. Read the feature's plan.md for architecture decisions\n\
+                 4. Execute each task in order, respecting phase dependencies\n\
+                 5. Tasks marked [P] can be done in parallel\n\
+                 6. After completing each task, update tasks.md: change `- [ ]` to `- [x]` for that task\n\
+                 7. When all tasks are done, run /rustyspec-analyze to validate"
+            )
+        } else {
+            format!(
+                "Read the project context from .rustyspec/AGENT.md, then execute the '{}' workflow for the feature specified by {}.",
+                cmd_name, agent.arg_placeholder
+            )
+        };
 
         let body = formats::translate_placeholder(&body, agent.arg_placeholder);
         let content = formats::render_command(agent.format, description, &body);

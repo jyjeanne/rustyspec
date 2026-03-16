@@ -9,7 +9,7 @@ This project follows Specification-Driven Development (SDD). Key governance:
 
 - **Library-First**: Features begin as standalone components
 - **Test-First**: Tests before implementation
-- **Simplicity**: Max 3 projects, no future-proofing
+- **Simplicity**: Max 3 projects, no speculative features
 - **Anti-Abstraction**: Use frameworks directly
 - **Integration-First**: Real services over mocks
 

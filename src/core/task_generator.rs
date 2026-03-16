@@ -82,7 +82,7 @@ pub fn generate_tasks(spec: &ParsedSpec, plan_content: &str, has_data_model: boo
             true,
             None,
             &format!(
-                "Create {entity} model in src/models/{}.rs",
+                "Create {entity} model in src/models/{}",
                 entity.to_lowercase()
             ),
         ));

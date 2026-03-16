@@ -48,7 +48,7 @@ pub fn parse_constitution(content: &str) -> Result<Constitution> {
             article: "Article VII".into(),
             checks: vec![
                 "Maximum 3 projects for initial implementation".into(),
-                "No future-proofing or speculative features".into(),
+                "No speculative or might-need features".into(),
             ],
         });
     }
@@ -160,7 +160,7 @@ mod tests {
 
 ### Article VII: Simplicity
 - Maximum 3 projects for initial implementation
-- No future-proofing
+- No speculative features
 
 ### Article VIII: Anti-Abstraction
 - Use framework features directly

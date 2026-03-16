@@ -28,6 +28,10 @@ pub fn run(force: bool) -> Result<()> {
     }
     println!("  Refreshed {refreshed} templates");
 
+    // Refresh scripts (always overwrite)
+    templates::copy_embedded_scripts(&project_root.join(".rustyspec"))?;
+    println!("  Refreshed shell scripts (bash + powershell)");
+
     // Preserve constitution (never overwrite)
     let constitution_path = project_root.join(".rustyspec/constitution.md");
     if constitution_path.exists() {

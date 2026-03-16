@@ -603,7 +603,7 @@ project/
 │   │   ├── constitution-template.md
 │   │   └── overrides/            # Project-specific template tweaks (user-managed)
 │   ├── scripts/
-│   │   ├── bash/                 # Shell helpers
+│   │   ├── bash/                 # Shell helpers (refreshed on upgrade)
 │   │   └── powershell/
 │   ├── presets/
 │   │   └── .registry             # Installed presets (JSON)

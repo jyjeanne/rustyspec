@@ -17,7 +17,7 @@ No implementation code shall be written before tests are written, validated, and
 ### Article VII: Simplicity
 - Maximum 3 projects for initial implementation
 - Additional projects require documented justification
-- No future-proofing or speculative features
+- No speculative or "might need" features
 
 ### Article VIII: Anti-Abstraction
 - Use framework features directly rather than wrapping them

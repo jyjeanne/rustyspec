@@ -122,18 +122,24 @@ fn extract_clarification_markers(content: &str) -> Vec<ClarificationMarker> {
 }
 
 fn extract_entities(content: &str) -> Vec<String> {
-    let re = Regex::new(r"\*\*\[([^\]]+)\]\*\*:\s*").unwrap();
+    extract_entities_with_descriptions(content)
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect()
+}
 
-    // Only look in the Key Entities section
+/// Extract entities with their descriptions from the Key Entities section.
+pub fn extract_entities_with_descriptions(content: &str) -> Vec<(String, String)> {
+    let re = Regex::new(r"\*\*\[([^\]]+)\]\*\*:\s*(.*)").unwrap();
+
     let section_start = content.find("### Key Entities");
     if let Some(start) = section_start {
         let rest = &content[start..];
-        // Find the next top-level section (## ) after the entities header
         let end = rest[1..].find("\n## ").map(|i| i + 1).unwrap_or(rest.len());
         let section = &rest[..end];
 
         re.captures_iter(section)
-            .map(|caps| caps[1].to_string())
+            .map(|caps| (caps[1].to_string(), caps[2].trim().to_string()))
             .collect()
     } else {
         Vec::new()
@@ -305,5 +311,27 @@ See who is online.
         let content = "[NEEDS CLARIFICATION: a] [NEEDS CLARIFICATION: b] [NEEDS CLARIFICATION: c] [NEEDS CLARIFICATION: d]";
         let issues = validate_spec_quality(content);
         assert!(issues.iter().any(|i| i.contains("Too many")));
+    }
+
+    #[test]
+    fn extract_entities_with_descriptions() {
+        let entities = super::extract_entities_with_descriptions(SAMPLE_SPEC);
+        assert_eq!(entities.len(), 2);
+        assert_eq!(entities[0].0, "Message");
+        assert!(
+            entities[0].1.contains("text payload"),
+            "Expected description, got: {}",
+            entities[0].1
+        );
+        assert_eq!(entities[1].0, "User");
+    }
+
+    #[test]
+    fn extract_entities_with_empty_description() {
+        let content = "### Key Entities\n\n- **[Foo]**: \n\n## Next Section\n";
+        let entities = super::extract_entities_with_descriptions(content);
+        assert_eq!(entities.len(), 1);
+        assert_eq!(entities[0].0, "Foo");
+        assert!(entities[0].1.is_empty());
     }
 }
