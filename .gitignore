@@ -1,0 +1,19 @@
+/target
+*.exe
+*.pdb
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code local settings
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+/tmp/
