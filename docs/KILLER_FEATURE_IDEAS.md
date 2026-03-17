@@ -34,7 +34,7 @@ Features committed for implementation, in order:
 | Version | Feature | Status | Spec |
 |---------|---------|--------|------|
 | v0.2.0 | **Spec-to-Test Generation** | Planned | [spec-to-test-generation.md](spec-to-test-generation.md) |
-| v0.3.0 | **Multi-Agent Pipeline** | Planned | TBD |
+| v0.3.0 | **Multi-Agent Pipeline** | Planned | [multi-agent-pipeline.md](multi-agent-pipeline.md) |
 
 ---
 
