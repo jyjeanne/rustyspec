@@ -6,6 +6,7 @@ pub mod completions;
 pub mod extension;
 pub mod implement;
 pub mod init;
+pub mod pipeline;
 pub mod plan;
 pub mod preset;
 pub mod specify;
@@ -121,6 +122,40 @@ pub enum Commands {
         append: bool,
     },
 
+    /// Run the multi-agent SDD pipeline
+    Pipeline {
+        /// Feature ID (auto-detected if omitted; mutually exclusive with --new)
+        feature_id: Option<String>,
+
+        /// Create a new feature and run full pipeline
+        #[arg(long, value_name = "DESCRIPTION")]
+        new: Option<String>,
+
+        /// Start from this phase
+        #[arg(long)]
+        from: Option<String>,
+
+        /// Stop after this phase
+        #[arg(long)]
+        to: Option<String>,
+
+        /// Run a single phase only
+        #[arg(long)]
+        only: Option<String>,
+
+        /// Re-run phases even if artifacts exist
+        #[arg(long)]
+        force: bool,
+
+        /// Preview without executing
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Skip user confirmation at handoff phases
+        #[arg(long)]
+        auto: bool,
+    },
+
     /// Manage workflow presets
     Preset {
         #[command(subcommand)]
@@ -178,6 +213,25 @@ pub fn run(cli: Cli) -> Result<()> {
         ),
         Commands::Analyze { feature_id } => analyze::run(feature_id.as_deref()),
         Commands::Checklist { feature_id, append } => checklist::run(feature_id.as_deref(), append),
+        Commands::Pipeline {
+            feature_id,
+            new,
+            from,
+            to,
+            only,
+            force,
+            dry_run,
+            auto,
+        } => pipeline::run(
+            feature_id.as_deref(),
+            new.as_deref(),
+            from.as_deref(),
+            to.as_deref(),
+            only.as_deref(),
+            force,
+            dry_run,
+            auto,
+        ),
         Commands::Preset { command } => preset::run(command),
         Commands::Extension { command } => extension::run(command),
         Commands::Upgrade { force } => upgrade::run(force),

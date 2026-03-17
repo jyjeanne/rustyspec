@@ -136,7 +136,7 @@ pub fn resolve_feature(explicit_id: Option<&str>, project_root: &Path) -> Result
     latest_feature_dir(&project_root.join("specs"))
 }
 
-/// Find a feature directory matching a numeric prefix (e.g., "001" matches "001-auth-system").
+/// Find a feature directory matching a prefix or exact name.
 pub fn find_feature_dir_by_prefix(specs_dir: &Path, prefix: &str) -> Result<String> {
     if !specs_dir.exists() {
         return Err(RustySpecError::Feature {
@@ -144,6 +144,11 @@ pub fn find_feature_dir_by_prefix(specs_dir: &Path, prefix: &str) -> Result<Stri
             fix: "Run 'rustyspec init' and 'rustyspec specify' first.".into(),
         }
         .into());
+    }
+
+    // Try exact directory name match first
+    if specs_dir.join(prefix).is_dir() {
+        return Ok(prefix.to_string());
     }
 
     let re = Regex::new(r"^(\d{3})-.+$").unwrap();

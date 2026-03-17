@@ -15,6 +15,8 @@ pub struct RootConfig {
     pub git: GitConfig,
     #[serde(default)]
     pub templates: TemplatesConfig,
+    #[serde(default)]
+    pub pipeline: PipelineConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -61,6 +63,68 @@ pub struct TemplatesConfig {
     pub override_dir: String,
 }
 
+/// Pipeline configuration: maps SDD phases to agent IDs.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct PipelineConfig {
+    #[serde(default)]
+    pub specify: Option<String>,
+    #[serde(default)]
+    pub clarify: Option<String>,
+    #[serde(default)]
+    pub plan: Option<String>,
+    #[serde(default)]
+    pub tasks: Option<String>,
+    #[serde(default)]
+    pub tests: Option<String>,
+    #[serde(default)]
+    pub implement: Option<String>,
+    #[serde(default)]
+    pub analyze: Option<String>,
+}
+
+impl PipelineConfig {
+    /// Get the agent for a phase, falling back to default_agent.
+    pub fn agent_for_phase(&self, phase: &str, default_agent: &str) -> String {
+        let mapped = match phase {
+            "specify" => &self.specify,
+            "clarify" => &self.clarify,
+            "plan" => &self.plan,
+            "tasks" => &self.tasks,
+            "tests" => &self.tests,
+            "implement" => &self.implement,
+            "analyze" => &self.analyze,
+            _ => &None,
+        };
+        mapped.as_deref().unwrap_or(default_agent).to_string()
+    }
+
+    /// Validate all mapped agent IDs exist.
+    pub fn validate(&self, valid_agents: &[&str]) -> Result<()> {
+        let mappings = [
+            ("specify", &self.specify),
+            ("clarify", &self.clarify),
+            ("plan", &self.plan),
+            ("tasks", &self.tasks),
+            ("tests", &self.tests),
+            ("implement", &self.implement),
+            ("analyze", &self.analyze),
+        ];
+        for (phase, agent) in &mappings {
+            if let Some(id) = agent
+                && !valid_agents.contains(&id.as_str())
+            {
+                anyhow::bail!(
+                    "Pipeline phase '{}' maps to unknown agent '{}'. Available: {}",
+                    phase,
+                    id,
+                    valid_agents.join(", ")
+                );
+            }
+        }
+        Ok(())
+    }
+}
+
 fn default_version() -> String {
     "0.1.0".into()
 }
@@ -84,6 +148,7 @@ impl RootConfig {
             ai: AiConfig::default(),
             git: GitConfig::default(),
             templates: TemplatesConfig::default(),
+            pipeline: PipelineConfig::default(),
         }
     }
 

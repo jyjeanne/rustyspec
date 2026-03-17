@@ -3,6 +3,7 @@ pub mod constitution;
 pub mod errors;
 pub mod feature;
 pub mod git;
+pub mod pipeline;
 pub mod spec_parser;
 pub mod task_generator;
 pub mod test_generator;
