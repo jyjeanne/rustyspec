@@ -24,6 +24,7 @@ const COMMANDS: &[(&str, &str)] = &[
         "Generate a story-driven task breakdown from the plan",
     ),
     ("implement", "Execute tasks from the task breakdown"),
+    ("tests", "Generate test scaffolds from acceptance scenarios"),
     ("analyze", "Validate cross-artifact consistency"),
     ("checklist", "Generate a quality validation checklist"),
 ];

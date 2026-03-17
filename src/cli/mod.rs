@@ -10,6 +10,7 @@ pub mod plan;
 pub mod preset;
 pub mod specify;
 pub mod tasks;
+pub mod tests_cmd;
 pub mod upgrade;
 pub mod ux;
 
@@ -86,6 +87,24 @@ pub enum Commands {
         pass: Option<u32>,
     },
 
+    /// Generate test scaffolds from acceptance scenarios
+    Tests {
+        /// Feature ID (e.g., 001) — auto-detected if omitted
+        feature_id: Option<String>,
+
+        /// Override auto-detected test framework (jest, pytest, cargo, go, generic)
+        #[arg(long)]
+        framework: Option<String>,
+
+        /// Override test output directory
+        #[arg(long)]
+        output: Option<String>,
+
+        /// Preview without writing files
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// Validate cross-artifact consistency (read-only)
     Analyze {
         /// Feature ID (e.g., 001) — auto-detected if omitted
@@ -146,6 +165,17 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Plan { feature_id } => plan::run(feature_id.as_deref()),
         Commands::Tasks { feature_id } => tasks::run(feature_id.as_deref()),
         Commands::Implement { feature_id, pass } => implement::run(feature_id.as_deref(), pass),
+        Commands::Tests {
+            feature_id,
+            framework,
+            output,
+            dry_run,
+        } => tests_cmd::run(
+            feature_id.as_deref(),
+            framework.as_deref(),
+            output.as_deref(),
+            dry_run,
+        ),
         Commands::Analyze { feature_id } => analyze::run(feature_id.as_deref()),
         Commands::Checklist { feature_id, append } => checklist::run(feature_id.as_deref(), append),
         Commands::Preset { command } => preset::run(command),
