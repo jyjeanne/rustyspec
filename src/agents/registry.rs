@@ -492,9 +492,7 @@ mod tests {
         register_commands(dir.path(), vibe).unwrap();
 
         // Directory-based: .vibe/skills/rustyspec-specify/SKILL.md
-        let skill = dir
-            .path()
-            .join(".vibe/skills/rustyspec-specify/SKILL.md");
+        let skill = dir.path().join(".vibe/skills/rustyspec-specify/SKILL.md");
         assert!(
             skill.exists(),
             "Vibe skill not found at {}",

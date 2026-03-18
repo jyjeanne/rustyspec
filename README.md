@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">RustySpec</h1>
+  <img src="docs/picture/logo.png" alt="RustySpec Logo" width="600">
   <p align="center">
     <strong>Specification-Driven Development for the AI era</strong>
   </p>
