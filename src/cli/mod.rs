@@ -154,6 +154,10 @@ pub enum Commands {
         /// Skip user confirmation at handoff phases
         #[arg(long)]
         auto: bool,
+
+        /// Scaffold only — skip AI agent invocation (generate templates without filling)
+        #[arg(long)]
+        no_agent: bool,
     },
 
     /// Manage workflow presets
@@ -222,6 +226,7 @@ pub fn run(cli: Cli) -> Result<()> {
             force,
             dry_run,
             auto,
+            no_agent,
         } => pipeline::run(
             feature_id.as_deref(),
             new.as_deref(),
@@ -231,6 +236,7 @@ pub fn run(cli: Cli) -> Result<()> {
             force,
             dry_run,
             auto,
+            no_agent,
         ),
         Commands::Preset { command } => preset::run(command),
         Commands::Extension { command } => extension::run(command),

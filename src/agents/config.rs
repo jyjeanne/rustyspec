@@ -11,6 +11,12 @@ pub struct AgentConfig {
     pub arg_placeholder: &'static str,
     pub requires_cli: bool,
     pub aliases: &'static [&'static str],
+    /// CLI binary name for non-interactive invocation (empty = no CLI support)
+    pub cli_binary: &'static str,
+    /// Flag to pass a prompt non-interactively (e.g., "-p", "--prompt", "-m")
+    pub cli_prompt_flag: &'static str,
+    /// Extra flags for non-interactive mode (e.g., "--yes", "--allow-all-tools")
+    pub cli_extra_flags: &'static [&'static str],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,6 +36,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "claude",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &["--allowedTools", "Edit Write Read Bash Glob Grep"],
     },
     AgentConfig {
         id: "gemini",
@@ -41,6 +50,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "{{args}}",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "gemini",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "copilot",
@@ -52,6 +64,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: false,
         aliases: &[],
+        cli_binary: "copilot",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &["--allow-all-tools"],
     },
     AgentConfig {
         id: "cursor",
@@ -63,6 +78,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: false,
         aliases: &[],
+        cli_binary: "cursor-agent",
+        cli_prompt_flag: "-n",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "windsurf",
@@ -74,6 +92,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: false,
         aliases: &[],
+        cli_binary: "",
+        cli_prompt_flag: "",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "codex",
@@ -85,6 +106,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "codex",
+        cli_prompt_flag: "exec",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "qwen",
@@ -96,6 +120,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "qwen",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "opencode",
@@ -107,6 +134,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "opencode",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "kilocode",
@@ -118,6 +148,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: false,
         aliases: &[],
+        cli_binary: "",
+        cli_prompt_flag: "",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "auggie",
@@ -129,6 +162,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "auggie",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "roo",
@@ -140,6 +176,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: false,
         aliases: &[],
+        cli_binary: "roo-code-cli",
+        cli_prompt_flag: "--headless",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "codebuddy",
@@ -151,6 +190,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "codebuddy",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "qodercli",
@@ -162,6 +204,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &["qoder"],
+        cli_binary: "qodercli",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "kiro-cli",
@@ -173,6 +218,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &["kiro"],
+        cli_binary: "kiro",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "amp",
@@ -184,6 +232,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "amp",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "shai",
@@ -195,6 +246,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "shai",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "tabnine",
@@ -206,6 +260,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "{{args}}",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "tabnine",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "kimi",
@@ -217,17 +274,23 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: true,
         aliases: &[],
+        cli_binary: "kimi",
+        cli_prompt_flag: "--yolo",
+        cli_extra_flags: &[],
     },
     AgentConfig {
         id: "vibe",
         name: "Mistral Vibe",
         command_dir: ".vibe",
-        commands_subdir: "prompts",
-        extension: ".md",
+        commands_subdir: "skills",
+        extension: "/SKILL.md",
         format: AgentFormat::Markdown,
         arg_placeholder: "$ARGUMENTS",
         requires_cli: false,
         aliases: &[],
+        cli_binary: "vibe",
+        cli_prompt_flag: "-p",
+        cli_extra_flags: &["--max-turns", "25"],
     },
     AgentConfig {
         id: "bob",
@@ -239,6 +302,9 @@ pub const AGENTS: &[AgentConfig] = &[
         arg_placeholder: "$ARGUMENTS",
         requires_cli: false,
         aliases: &[],
+        cli_binary: "",
+        cli_prompt_flag: "",
+        cli_extra_flags: &[],
     },
 ];
 

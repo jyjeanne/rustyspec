@@ -58,31 +58,122 @@ pub fn register_commands(project_root: &Path, agent: &AgentConfig) -> Result<()>
     std::fs::create_dir_all(&cmd_dir)?;
 
     for (cmd_name, description) in COMMANDS {
-        let body = if *cmd_name == "implement" {
-            let arg = agent.arg_placeholder;
-            format!(
-                "Read the project context from .rustyspec/AGENT.md, then implement the feature.\n\n\
-                 The feature ID is: {arg}\n\
-                 Find the matching directory under specs/ (e.g. specs/001-feature-name/).\n\n\
-                 Steps:\n\
-                 1. Read the feature's tasks.md for the task list\n\
-                 2. Read the feature's spec.md for requirements and acceptance criteria\n\
-                 3. Read the feature's plan.md for architecture decisions\n\
-                 4. Execute each task in order, respecting phase dependencies\n\
-                 5. Tasks marked [P] can be done in parallel\n\
-                 6. After completing each task, update tasks.md: change `- [ ]` to `- [x]` for that task\n\
-                 7. When all tasks are done, run /rustyspec-analyze to validate"
-            )
-        } else {
-            format!(
-                "Read the project context from .rustyspec/AGENT.md, then execute the '{}' workflow for the feature specified by {}.",
-                cmd_name, agent.arg_placeholder
-            )
+        let arg = agent.arg_placeholder;
+        let body = match *cmd_name {
+            "implement" => {
+                format!(
+                    "Read the project context from .rustyspec/AGENT.md, then implement the feature.\n\n\
+                     The feature ID is: {arg}\n\
+                     Find the matching directory under specs/ (e.g. specs/001-feature-name/).\n\n\
+                     Steps:\n\
+                     1. Read the feature's tasks.md for the task list\n\
+                     2. Read the feature's spec.md for requirements and acceptance criteria\n\
+                     3. Read the feature's plan.md for architecture decisions\n\
+                     4. Execute each task in order, respecting phase dependencies\n\
+                     5. Tasks marked [P] can be done in parallel\n\
+                     6. After completing each task, update tasks.md: change `- [ ]` to `- [x]` for that task\n\
+                     7. When all tasks are done, run /rustyspec-analyze to validate"
+                )
+            }
+            "specify" => {
+                format!(
+                    "Read the project context from .rustyspec/AGENT.md.\n\n\
+                     Feature ID: {arg}\n\
+                     Find the matching directory under specs/ (e.g. specs/001-feature-name/).\n\n\
+                     Fill in the feature's spec.md with real content:\n\
+                     1. Replace [Brief Title] with a descriptive story title\n\
+                     2. Write user stories with clear Given/When/Then acceptance scenarios\n\
+                     3. Define functional requirements (FR-001, FR-002, etc.)\n\
+                     4. Identify key entities and their relationships\n\
+                     5. Define measurable success criteria\n\
+                     6. List edge cases\n\n\
+                     Keep requirements technology-agnostic. Focus on WHAT, not HOW.\n\
+                     Only edit the existing spec.md — do not create new files."
+                )
+            }
+            "clarify" => {
+                format!(
+                    "Read the project context from .rustyspec/AGENT.md.\n\n\
+                     Feature ID: {arg}\n\
+                     Find the matching directory under specs/.\n\n\
+                     Read spec.md and find all [NEEDS CLARIFICATION] markers.\n\
+                     For each marker:\n\
+                     1. Identify the ambiguity\n\
+                     2. Propose a resolution based on best practices\n\
+                     3. Update spec.md with the resolution\n\
+                     4. Remove the [NEEDS CLARIFICATION] marker"
+                )
+            }
+            "plan" => {
+                format!(
+                    "Read the project context from .rustyspec/AGENT.md.\n\n\
+                     Feature ID: {arg}\n\
+                     Find the matching directory under specs/ and read spec.md for requirements.\n\n\
+                     Fill in the planning documents with real content:\n\
+                     1. plan.md — Architecture decisions, tech stack, project structure, constitution check\n\
+                     2. research.md — Technology investigation findings\n\
+                     3. data-model.md — Entity definitions and relationships\n\
+                     4. contracts/api.md — API contracts if applicable\n\
+                     5. quickstart.md — Key validation scenarios\n\n\
+                     Complete the Constitution Check in plan.md.\n\
+                     Fill all [NEEDS CLARIFICATION] and [To be filled] sections with concrete content."
+                )
+            }
+            "tasks" => {
+                format!(
+                    "Read the project context from .rustyspec/AGENT.md.\n\n\
+                     Feature ID: {arg}\n\
+                     Find the matching directory under specs/.\n\
+                     Read spec.md and plan.md.\n\n\
+                     Fill in tasks.md with concrete, actionable tasks:\n\
+                     1. Define specific tasks with clear deliverables\n\
+                     2. Organize by phases (Setup → Foundational → User Stories → Polish)\n\
+                     3. Mark parallel-safe tasks with [P]\n\
+                     4. Link tasks to user stories with [US1], [US2], etc.\n\
+                     5. Replace all placeholder text with real content"
+                )
+            }
+            "tests" => {
+                format!(
+                    "Read the project context from .rustyspec/AGENT.md.\n\n\
+                     Feature ID: {arg}\n\
+                     Find the matching directory under specs/.\n\
+                     Read spec.md for acceptance scenarios.\n\n\
+                     Review and enhance test scaffolds in the feature's tests/ directory:\n\
+                     1. Add concrete test implementations for each Given/When/Then scenario\n\
+                     2. Replace placeholder text with real test assertions\n\
+                     3. Add edge case tests based on the spec\n\
+                     4. Ensure tests are runnable with the project's test framework"
+                )
+            }
+            "analyze" => {
+                format!(
+                    "Read the project context from .rustyspec/AGENT.md.\n\n\
+                     Feature ID: {arg}\n\
+                     Find the matching directory under specs/.\n\n\
+                     Validate cross-artifact consistency:\n\
+                     1. Check that plan.md addresses all requirements from spec.md\n\
+                     2. Check that tasks.md covers all planned work\n\
+                     3. Check that tests cover all acceptance scenarios\n\
+                     4. Report any gaps or inconsistencies"
+                )
+            }
+            _ => {
+                format!(
+                    "Read the project context from .rustyspec/AGENT.md, then execute the '{}' workflow for the feature specified by {arg}.",
+                    cmd_name
+                )
+            }
         };
 
         let body = formats::translate_placeholder(&body, agent.arg_placeholder);
-        let content = formats::render_command(agent.format, description, &body);
-        let content = formats::adjust_script_paths(&content);
+        let content = if agent.id == "vibe" {
+            let rendered = formats::render_vibe_skill(cmd_name, description, &body);
+            formats::adjust_script_paths(&rendered)
+        } else {
+            let rendered = formats::render_command(agent.format, description, &body);
+            formats::adjust_script_paths(&rendered)
+        };
 
         write_command_file(project_root, agent, cmd_name, &content)?;
     }
@@ -104,6 +195,12 @@ fn write_command_file(
     if agent.id == "kimi" {
         // Kimi: directory-based skills with dot-separator
         let skill_name = formats::kimi_command_name(cmd_name);
+        let skill_dir = cmd_dir.join(&skill_name);
+        std::fs::create_dir_all(&skill_dir)?;
+        std::fs::write(skill_dir.join("SKILL.md"), content)?;
+    } else if agent.id == "vibe" {
+        // Vibe: directory-based skills with hyphen-separator
+        let skill_name = formats::standard_command_name(cmd_name);
         let skill_dir = cmd_dir.join(&skill_name);
         std::fs::create_dir_all(&skill_dir)?;
         std::fs::write(skill_dir.join("SKILL.md"), content)?;
@@ -143,6 +240,12 @@ pub fn unregister_commands(project_root: &Path, agent: &AgentConfig) -> Result<(
     for (cmd_name, _) in COMMANDS {
         if agent.id == "kimi" {
             let skill_name = formats::kimi_command_name(cmd_name);
+            let skill_dir = cmd_dir.join(&skill_name);
+            if skill_dir.exists() {
+                std::fs::remove_dir_all(&skill_dir)?;
+            }
+        } else if agent.id == "vibe" {
+            let skill_name = formats::standard_command_name(cmd_name);
             let skill_dir = cmd_dir.join(&skill_name);
             if skill_dir.exists() {
                 std::fs::remove_dir_all(&skill_dir)?;
@@ -380,6 +483,39 @@ mod tests {
         let registered = register_all(dir.path(), None).unwrap();
         assert!(registered.contains(&"claude".to_string()));
         assert!(registered.contains(&"cursor".to_string()));
+    }
+
+    #[test]
+    fn vibe_creates_directory_based_skills() {
+        let dir = TempDir::new().unwrap();
+        let vibe = find_agent("vibe").unwrap();
+        register_commands(dir.path(), vibe).unwrap();
+
+        // Directory-based: .vibe/skills/rustyspec-specify/SKILL.md
+        let skill = dir
+            .path()
+            .join(".vibe/skills/rustyspec-specify/SKILL.md");
+        assert!(
+            skill.exists(),
+            "Vibe skill not found at {}",
+            skill.display()
+        );
+
+        let content = std::fs::read_to_string(&skill).unwrap();
+        assert!(content.contains("name: rustyspec-specify"));
+        assert!(content.contains("user-invocable: true"));
+        assert!(content.contains("allowed-tools:"));
+    }
+
+    #[test]
+    fn unregister_removes_vibe_dirs() {
+        let dir = TempDir::new().unwrap();
+        let vibe = find_agent("vibe").unwrap();
+        register_commands(dir.path(), vibe).unwrap();
+        unregister_commands(dir.path(), vibe).unwrap();
+
+        let skill = dir.path().join(".vibe/skills/rustyspec-specify");
+        assert!(!skill.exists());
     }
 
     #[test]

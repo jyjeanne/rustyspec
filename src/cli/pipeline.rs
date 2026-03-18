@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use anyhow::{Context, Result};
 
+use crate::agents::invoker::{self, InvokeResult};
 use crate::config;
 use crate::core::{feature, pipeline};
 
@@ -16,6 +17,7 @@ pub fn run(
     force: bool,
     dry_run: bool,
     auto: bool,
+    no_agent: bool,
 ) -> Result<()> {
     // Validate mutual exclusivity
     if new_desc.is_some() && feature_id.is_some() {
@@ -68,7 +70,25 @@ pub fn run(
 
     let mut feature_dir = project_root.join("specs").join(&feature_dir_name);
 
-    println!("Pipeline: {feature_dir_name}\n");
+    // Check agent CLI availability upfront
+    let agent_mode = if no_agent {
+        AgentMode::Disabled
+    } else {
+        check_agent_availability(&phases, &root_config.pipeline, default_agent)
+    };
+
+    match &agent_mode {
+        AgentMode::Disabled => {
+            println!("Pipeline: {feature_dir_name} [scaffold-only]\n");
+        }
+        AgentMode::AllCli => {
+            println!("Pipeline: {feature_dir_name} [fully automated]\n");
+        }
+        AgentMode::Mixed { handoff_phases } => {
+            println!("Pipeline: {feature_dir_name} [mixed mode]");
+            println!("  Handoff required for: {}\n", handoff_phases.join(", "));
+        }
+    }
 
     if dry_run {
         for (i, phase) in phases.iter().enumerate() {
@@ -77,8 +97,12 @@ pub fn run(
             let ptype = pipeline::phase_type(phase);
             let type_label = if ptype == pipeline::PhaseType::Handoff {
                 " [HANDOFF]"
+            } else if agent_mode == AgentMode::Disabled {
+                " [scaffold]"
+            } else if invoker::supports_cli(&agent) {
+                " [auto+agent]"
             } else {
-                ""
+                " [HANDOFF]"
             };
             let status = if skip { "○ skip" } else { "● run" };
             println!(
@@ -148,6 +172,7 @@ pub fn run(
             &agent,
             new_desc,
             auto,
+            &agent_mode,
         );
         let elapsed_ms = start.elapsed().as_millis() as u64;
 
@@ -222,40 +247,113 @@ pub fn run(
     Ok(())
 }
 
+/// Agent execution mode for the pipeline.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AgentMode {
+    /// No agent invocation — scaffold only (--no-agent)
+    Disabled,
+    /// All phases have CLI-capable agents
+    AllCli,
+    /// Some phases need handoff (agent CLI not available)
+    Mixed { handoff_phases: Vec<String> },
+}
+
+/// Check which agents are available for CLI invocation.
+fn check_agent_availability(
+    phases: &[&str],
+    pipeline_config: &config::PipelineConfig,
+    default_agent: &str,
+) -> AgentMode {
+    let mut handoff = Vec::new();
+
+    for phase in phases {
+        let agent_id = pipeline_config.agent_for_phase(phase, default_agent);
+        // implement is always a handoff
+        if *phase == "implement" {
+            handoff.push(format!("{phase} ({agent_id})"));
+            continue;
+        }
+        if !invoker::supports_cli(&agent_id) {
+            handoff.push(format!("{phase} ({agent_id})"));
+        }
+    }
+
+    if handoff.is_empty() {
+        AgentMode::AllCli
+    } else {
+        AgentMode::Mixed {
+            handoff_phases: handoff,
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn execute_phase(
     phase: &str,
     feature_dir_name: &str,
     _feature_dir: &std::path::Path,
-    _project_root: &std::path::Path,
+    project_root: &std::path::Path,
     agent: &str,
     new_desc: Option<&str>,
     auto: bool,
+    agent_mode: &AgentMode,
 ) -> Result<String> {
     match phase {
         "specify" => {
             let desc = new_desc.unwrap_or(feature_dir_name);
             crate::cli::specify::run(desc)?;
+
+            // After scaffold creation, invoke AI agent to fill content
+            if *agent_mode != AgentMode::Disabled {
+                invoke_or_handoff(
+                    agent,
+                    phase,
+                    feature_dir_name,
+                    project_root,
+                    Some(desc),
+                    auto,
+                )?;
+            }
             Ok("spec.md created".into())
         }
         "clarify" => {
             crate::cli::clarify::run(Some(feature_dir_name))?;
+
+            if *agent_mode != AgentMode::Disabled {
+                invoke_or_handoff(agent, phase, feature_dir_name, project_root, None, auto)?;
+            }
             Ok("clarification complete".into())
         }
         "plan" => {
             crate::cli::plan::run(Some(feature_dir_name))?;
+
+            if *agent_mode != AgentMode::Disabled {
+                invoke_or_handoff(agent, phase, feature_dir_name, project_root, None, auto)?;
+            }
             Ok("plan.md + supporting docs".into())
         }
         "tasks" => {
             crate::cli::tasks::run(Some(feature_dir_name))?;
+
+            if *agent_mode != AgentMode::Disabled {
+                invoke_or_handoff(agent, phase, feature_dir_name, project_root, None, auto)?;
+            }
             Ok("tasks.md generated".into())
         }
         "tests" => {
             crate::cli::tests_cmd::run(Some(feature_dir_name), None, None, false)?;
+
+            if *agent_mode != AgentMode::Disabled {
+                invoke_or_handoff(agent, phase, feature_dir_name, project_root, None, auto)?;
+            }
             Ok("test scaffolds generated".into())
         }
         "implement" => {
-            // Handoff: show instructions and wait for confirmation
-            println!("    → Open {} and run: /rustyspec-implement", agent);
+            // Implement is always a handoff — AI agent does the actual coding
+            println!(
+                "    → Open {} and run: /rustyspec-implement {feature_dir_name}",
+                agent
+            );
             if auto {
                 println!("    [auto] Skipping confirmation");
             } else {
@@ -271,6 +369,59 @@ fn execute_phase(
             Ok("analysis complete".into())
         }
         _ => anyhow::bail!("Unknown phase: {phase}"),
+    }
+}
+
+/// Invoke the AI agent CLI, or fall back to handoff if CLI is not available.
+fn invoke_or_handoff(
+    agent_id: &str,
+    phase: &str,
+    feature_dir_name: &str,
+    project_root: &std::path::Path,
+    description: Option<&str>,
+    auto: bool,
+) -> Result<()> {
+    println!("    → Invoking {} for '{}'...", agent_id, phase);
+
+    match invoker::invoke_agent(agent_id, phase, feature_dir_name, project_root, description) {
+        InvokeResult::Success { output } => {
+            let preview = output.lines().take(3).collect::<Vec<_>>().join(" ");
+            let preview = if preview.len() > 100 {
+                format!("{}...", &preview[..100])
+            } else if preview.is_empty() {
+                "(completed)".to_string()
+            } else {
+                preview
+            };
+            println!("    → Agent done: {preview}");
+            Ok(())
+        }
+        InvokeResult::NotAvailable { reason } => {
+            println!("    ⚠ {reason}");
+            println!("    → Run manually: /rustyspec-{phase} {feature_dir_name}");
+            if !auto {
+                print!("    ⏳ Press Enter when done (or Ctrl+C to abort)... ");
+                std::io::stdout().flush()?;
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input)?;
+            } else {
+                println!("    [auto] Continuing without agent");
+            }
+            Ok(())
+        }
+        InvokeResult::Failed { error } => {
+            println!("    ⚠ Agent failed: {error}");
+            println!("    → Run manually: /rustyspec-{phase} {feature_dir_name}");
+            if !auto {
+                print!("    ⏳ Press Enter to continue or Ctrl+C to abort... ");
+                std::io::stdout().flush()?;
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input)?;
+            } else {
+                println!("    [auto] Continuing despite agent failure");
+            }
+            Ok(())
+        }
     }
 }
 

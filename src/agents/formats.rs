@@ -43,6 +43,26 @@ pub fn adjust_script_paths(content: &str) -> String {
     content.replace("../../scripts/", ".rustyspec/scripts/")
 }
 
+/// Render a Vibe skill SKILL.md with the required frontmatter fields.
+pub fn render_vibe_skill(cmd_name: &str, description: &str, body: &str) -> String {
+    let name = standard_command_name(cmd_name);
+    format!(
+        "---\n\
+         name: {name}\n\
+         description: \"{description}\"\n\
+         user-invocable: true\n\
+         allowed-tools:\n\
+         \x20 - read_file\n\
+         \x20 - write_file\n\
+         \x20 - edit_file\n\
+         \x20 - bash\n\
+         \x20 - grep\n\
+         \x20 - glob\n\
+         ---\n\n\
+         {body}\n"
+    )
+}
+
 /// Generate a Kimi dot-separator command name (rustyspec.specify).
 pub fn kimi_command_name(cmd: &str) -> String {
     format!("rustyspec.{cmd}")
@@ -112,6 +132,18 @@ mod tests {
         let input = ".rustyspec/scripts/bash/setup.sh";
         let result = adjust_script_paths(input);
         assert_eq!(result, input);
+    }
+
+    #[test]
+    fn vibe_skill_has_required_frontmatter() {
+        let output = render_vibe_skill("specify", "Create a spec", "Do something with $ARGUMENTS");
+        assert!(output.starts_with("---\n"));
+        assert!(output.contains("name: rustyspec-specify"));
+        assert!(output.contains("user-invocable: true"));
+        assert!(output.contains("allowed-tools:"));
+        assert!(output.contains("- read_file"));
+        assert!(output.contains("- write_file"));
+        assert!(output.contains("Do something with $ARGUMENTS"));
     }
 
     #[test]

@@ -33,13 +33,16 @@ You describe a feature to your AI coding agent. It generates code. But the code 
                             v
   +----------------------------------------------------------+
   |                                                          |
-  |   1. rustyspec specify  -->  spec.md                     |
-  |   2. rustyspec clarify  -->  clarifications.md           |
-  |   3. rustyspec plan     -->  plan.md + research +        |
-  |                              data-model + contracts      |
-  |   4. rustyspec tasks    -->  tasks.md (phased, parallel) |
-  |   5. rustyspec analyze  -->  consistency report           |
-  |   6. rustyspec implement -> AI builds from tasks         |
+  |   1. rustyspec specify   -->  spec.md                     |
+  |   2. rustyspec clarify   -->  clarifications.md           |
+  |   3. rustyspec plan      -->  plan.md + research +        |
+  |                               data-model + contracts      |
+  |   4. rustyspec tasks     -->  tasks.md (phased, parallel) |
+  |   5. rustyspec tests     -->  test scaffolds (per story)  |
+  |   6. rustyspec implement -->  AI builds from tasks        |
+  |   7. rustyspec analyze   -->  consistency report           |
+  |                                                           |
+  |   Or run all at once: rustyspec pipeline --new "feature"  |
   |                                                          |
   +----------------------------------------------------------+
                             |
@@ -96,7 +99,7 @@ RustySpec creates:
 - `.rustyspec/` &mdash; constitution, templates, config
 - `specs/` &mdash; where feature artifacts live
 - `rustyspec.toml` &mdash; project configuration
-- `.claude/commands/rustyspec-*.md` &mdash; 7 slash commands for your agent
+- `.claude/commands/rustyspec-*.md` &mdash; 8 slash commands for your agent
 
 ### 2. Describe your feature
 
@@ -155,7 +158,7 @@ Use the slash command in your AI agent:
 
 ## Using with Claude Code
 
-Claude Code gets 7 slash commands automatically registered in `.claude/commands/`.
+Claude Code gets 8 slash commands automatically registered in `.claude/commands/`.
 
 ### Setup
 
@@ -181,6 +184,7 @@ Registered commands for 1 agent(s): claude
 | `/rustyspec-plan` | Generate architecture plan + supporting docs |
 | `/rustyspec-tasks` | Generate phased task breakdown |
 | `/rustyspec-implement` | Execute tasks from the breakdown |
+| `/rustyspec-tests` | Generate and enhance test scaffolds |
 | `/rustyspec-analyze` | Validate cross-artifact consistency |
 | `/rustyspec-checklist` | Generate quality validation checklist |
 
@@ -230,7 +234,7 @@ Claude checks that all requirements trace to plan sections, all plan sections tr
 
 ## Using with Mistral Vibe
 
-Mistral Vibe gets 7 slash commands in `.vibe/prompts/`.
+Mistral Vibe gets 8 skills registered as directories in `.vibe/skills/`. Each skill has a `SKILL.md` with the `user-invocable: true` frontmatter so it appears in Vibe's slash command list.
 
 ### Setup
 
@@ -242,6 +246,19 @@ rustyspec init --here
 You'll see:
 ```
 Registered commands for 1 agent(s): vibe
+```
+
+Skills are created at:
+```
+.vibe/skills/
+  rustyspec-specify/SKILL.md
+  rustyspec-clarify/SKILL.md
+  rustyspec-plan/SKILL.md
+  rustyspec-tasks/SKILL.md
+  rustyspec-implement/SKILL.md
+  rustyspec-tests/SKILL.md
+  rustyspec-analyze/SKILL.md
+  rustyspec-checklist/SKILL.md
 ```
 
 ### Step-by-step with Mistral Vibe
@@ -339,8 +356,18 @@ Both agents get the same commands and work from the same spec artifacts. You can
 - Use Claude Code for specification and planning
 - Switch to Vibe for implementation
 - Use either for analysis
+- Or automate everything with `rustyspec pipeline` &mdash; assign agents per phase in `rustyspec.toml`
 
 The artifacts in `specs/` are agent-agnostic &mdash; any agent can read and build from them.
+
+### Automated multi-agent pipeline
+
+```bash
+# Configure agent assignments in rustyspec.toml, then:
+rustyspec pipeline --new "Todo list REST API" --auto
+```
+
+The pipeline invokes each agent's CLI automatically. Claude Code gets `-p` with `--allowedTools`, Vibe gets `-p` (auto-approve). Agents that don't have CLI support fall back to manual handoff.
 
 ---
 
@@ -520,6 +547,117 @@ Each new feature follows the same structured workflow. Old code stays untouched,
 
 ---
 
+## Multi-Agent Pipeline
+
+Run the entire SDD workflow with one command, using different AI agents per phase. The pipeline **invokes each agent's CLI automatically** to fill spec artifacts with real content &mdash; not just empty templates.
+
+```toml
+# rustyspec.toml
+[pipeline]
+specify = "claude"       # Claude writes specs
+plan = "claude"          # Claude for architecture
+tasks = "claude"         # Claude for task breakdown
+tests = "claude"         # Claude for test generation
+implement = "vibe"       # Mistral Vibe for code
+analyze = "claude"       # Claude for cross-checking
+```
+
+```bash
+# Full pipeline on a new feature (agents invoked automatically)
+rustyspec pipeline --new "User auth with OAuth" --auto
+
+# Partial pipeline
+rustyspec pipeline 001 --from plan --to tasks
+
+# Preview without executing
+rustyspec pipeline 001 --dry-run
+
+# Scaffold only — generate templates without invoking AI agents
+rustyspec pipeline --new "Feature name" --no-agent
+```
+
+### How it works
+
+The pipeline runs 7 phases in order: **specify → clarify → plan → tasks → tests → implement → analyze**.
+
+For each Auto phase (specify, clarify, plan, tasks, tests, analyze):
+1. RustySpec generates the template scaffold (spec.md, plan.md, etc.)
+2. RustySpec invokes the agent's CLI non-interactively with detailed, phase-specific instructions
+3. The agent reads the scaffold and fills it with real content
+
+The `implement` phase is always a **handoff** &mdash; it tells you which agent to open and waits for confirmation.
+
+### Execution modes
+
+The pipeline detects agent CLI availability upfront and reports the mode:
+
+```
+Pipeline: 001-todo-api [fully automated]     # All agents have CLI support
+Pipeline: 001-todo-api [mixed mode]          # Some need manual handoff
+Pipeline: 001-todo-api [scaffold-only]       # --no-agent flag used
+```
+
+If an agent's CLI is not installed, the pipeline falls back to handoff mode for that phase (shows the manual command to run).
+
+### Supported agent CLI invocations
+
+| Agent | CLI Binary | Non-interactive Flag |
+|-------|-----------|---------------------|
+| Claude Code | `claude` | `-p` + `--allowedTools` |
+| Mistral Vibe | `vibe` | `-p` (auto-approves tools) |
+| Codex CLI | `codex` | `exec` subcommand |
+| Copilot CLI | `copilot` | `-p` + `--allow-all-tools` |
+| Kimi Code | `kimi` | `--yolo` |
+| Cursor | `cursor-agent` | `-n` |
+| Aider | `aider` | `-m` |
+| Roo Code | `roo-code-cli` | `--headless` |
+
+A `pipeline-log.md` is generated in the feature directory with timestamps, agents, duration, and status per phase.
+
+### Real-world example
+
+A pipeline test with Claude Code (specify/plan/tasks/tests/analyze) + Mistral Vibe (implement) on a "Todo List REST API" produced:
+
+| Phase | Agent | Duration | Output |
+|-------|-------|----------|--------|
+| specify | Claude | 40s | 5 user stories, 14 acceptance scenarios, 12 FRs |
+| plan | Claude | 95s | Node.js + Express + SQLite stack, API contracts |
+| tasks | Claude | 75s | 20 tasks across 8 phases with FR references |
+| tests | Claude | 88s | 5 test files with concrete assertions |
+| implement | Vibe | manual | Full CRUD API, 22 passing integration tests |
+
+Total: ~5 minutes for automated phases, fully working API with tests.
+
+---
+
+## Spec-to-Test Generation
+
+Generate runnable test scaffolds from your spec's acceptance scenarios:
+
+```bash
+rustyspec tests 001
+# Detected: Jest (JavaScript)
+# Parsed: 6 acceptance scenarios from 4 user stories
+# Generated: 4 test files
+```
+
+Auto-detects your test framework from project files (Jest, Vitest, pytest, cargo test, Go, generic). Each test has Given/When/Then comments and a failing body:
+
+```javascript
+describe('US1: Add a new task', () => {
+  test('task appears in list with pending status', () => {
+    // Given: the app is open
+    // When: user types a task title and clicks "Add"
+    // Then: the task appears in the list with status "pending"
+    throw new Error('TODO: implement this test');
+  });
+});
+```
+
+Override framework with `--framework pytest`, preview with `--dry-run`.
+
+---
+
 ## Generated Artifacts
 
 For each feature, RustySpec generates a complete artifact tree:
@@ -535,8 +673,12 @@ specs/001-todo-list-crud/
   contracts/               # API specifications
     api.md
   tasks.md                 # Phased task breakdown
+  tests/                   # Test scaffolds from acceptance scenarios
+    us1_add_task.test.js
+    us2_view_tasks.test.js
   checklists/
     requirements.md        # Quality validation checklist
+  pipeline-log.md          # Pipeline execution log (agents, timing, status)
 ```
 
 All artifacts are Markdown. All are version-controlled. All trace back to the original spec.
@@ -586,8 +728,10 @@ rustyspec preset add ./my-team-preset --priority 5
 | `rustyspec plan [id]` | Generate plan + research + data model + contracts |
 | `rustyspec tasks [id]` | Generate phased task breakdown with `[P]` parallel markers |
 | `rustyspec implement [id]` | Execute tasks with hook support and `--pass` for iterations |
+| `rustyspec tests [id]` | Generate test scaffolds from Given/When/Then scenarios (`--framework`) |
 | `rustyspec analyze [id]` | Validate consistency (read-only) with severity levels |
 | `rustyspec checklist [id]` | Generate/append quality checklists (`--append`) |
+| `rustyspec pipeline [id]` | Run multi-agent SDD pipeline (`--new`, `--from`, `--to`, `--auto`, `--no-agent`) |
 | `rustyspec preset <cmd>` | Manage presets (`add`, `remove`, `list`, `search`, `info`) |
 | `rustyspec extension <cmd>` | Manage extensions (`add`, `remove`, `enable`, `disable`, `list`) |
 | `rustyspec upgrade` | Refresh templates + agent commands after update |
@@ -603,7 +747,7 @@ Feature ID is auto-detected from git branch or latest spec if omitted.
 | Agent | Directory | Format |
 |-------|-----------|--------|
 | Claude Code | `.claude/commands/` | Markdown |
-| Mistral Vibe | `.vibe/prompts/` | Markdown |
+| Mistral Vibe | `.vibe/skills/` | Markdown (directory-based) |
 | GitHub Copilot | `.github/agents/` | Markdown + `.prompt.md` |
 | Gemini CLI | `.gemini/commands/` | TOML |
 | Cursor | `.cursor/commands/` | Markdown |
@@ -655,7 +799,7 @@ auto_commit = true
 ## Development
 
 ```bash
-# Run all 209 tests
+# Run all 266 tests
 cargo test
 
 # Build release binary
@@ -671,9 +815,9 @@ rustyspec completions fish > ~/.config/fish/completions/rustyspec.fish
 
 ```
 src/
-  cli/          13 command handlers (clap derive)
-  core/         Spec parser, planner, task generator, analyzer, constitution
-  agents/       20-agent config table, detection, format translation, registration
+  cli/          17 command handlers (clap derive)
+  core/         Spec parser, planner, task generator, test generator, pipeline, analyzer, constitution
+  agents/       20-agent config table, detection, format translation, registration, CLI invoker
   templates/    Tera rendering + 4-layer resolver
   presets/      Manifest validation, registry, manager
   extensions/   Manifest, registry, hooks, manager
